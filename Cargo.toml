@@ -1,15 +1,6 @@
-[package]
-name = "aida"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = ["agent", "shared", "ui"]
+resolver = "3"
 
-[lib]
-crate-type = ["cdylib"]
-
-[build-dependencies]
-bindgen = "0.72.1"
-
-[dependencies]
-eframe = "0.33.3"
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+[workspace.dependencies]
+ipc-channel = "0.20.2"

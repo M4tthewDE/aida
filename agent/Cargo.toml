@@ -1,0 +1,16 @@
+[package]
+name = "aida"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[build-dependencies]
+bindgen = "0.72.1"
+
+[dependencies]
+shared = { version = "0.1.0", path = "../shared" }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+ipc-channel = { workspace = true }

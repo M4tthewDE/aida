@@ -1,5 +1,5 @@
-use eframe::egui;
-use std::os::raw::c_int;
+use ipc_channel::ipc::IpcSender;
+use std::{ffi::CStr, os::raw::c_int, sync::OnceLock};
 use tracing::debug;
 use tracing_subscriber::{
     EnvFilter,
@@ -13,10 +13,12 @@ mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+static SENDER: OnceLock<IpcSender<shared::AgentMessage>> = OnceLock::new();
+
 #[unsafe(export_name = "Agent_OnLoad")]
 pub extern "C" fn agent_on_load(
     jvm: *mut bindings::JavaVM,
-    _options: *mut i8,
+    options: *mut i8,
     _reserved: *mut std::ffi::c_void,
 ) -> c_int {
     tracing_subscriber::registry()
@@ -26,6 +28,11 @@ pub extern "C" fn agent_on_load(
         .ok();
 
     unsafe {
+        let server_name = CStr::from_ptr(options).to_str().unwrap();
+        let tx: IpcSender<shared::AgentMessage> =
+            IpcSender::connect(server_name.to_string()).unwrap();
+        SENDER.set(tx.into()).unwrap();
+
         let get_env = (*(*jvm)).GetEnv.unwrap();
         let mut env: *mut std::ffi::c_void = std::ptr::null_mut();
         let result = get_env(
@@ -74,18 +81,11 @@ pub extern "C" fn agent_on_load(
 
     debug!("agent loaded");
 
-    std::thread::spawn(|| {
-        let options = eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
-            ..Default::default()
-        };
-        eframe::run_native(
-            "Confirm exit",
-            options,
-            Box::new(|_cc| Ok(Box::<App>::default())),
-        )
+    SENDER
+        .get()
+        .unwrap()
+        .send(shared::AgentMessage::Load)
         .unwrap();
-    });
 
     0
 }
@@ -97,20 +97,19 @@ pub extern "C" fn vm_init(
     _jthread: bindings::jthread,
 ) {
     debug!("vm init");
+    SENDER
+        .get()
+        .unwrap()
+        .send(shared::AgentMessage::VmInit)
+        .unwrap();
 }
 
 #[unsafe(export_name = "Agent_OnUnload")]
 pub extern "C" fn agent_on_unload(_vm: *mut bindings::JavaVM) {
     debug!("agent unloaded");
-}
-
-#[derive(Default)]
-struct App {}
-
-impl eframe::App for App {
-    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Aida");
-        });
-    }
+    SENDER
+        .get()
+        .unwrap()
+        .send(shared::AgentMessage::Unload)
+        .unwrap();
 }
