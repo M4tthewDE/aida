@@ -152,7 +152,7 @@ impl eframe::App for App {
                         egui::ScrollArea::vertical().show(ui, |ui| {
                             for class_load_event in &self.class_load_events {
                                 let timestamp: DateTime<Utc> =
-                                    DateTime::from_timestamp_millis(class_load_event.timestamp)
+                                    DateTime::from_timestamp_micros(class_load_event.timestamp)
                                         .unwrap();
                                 ui.horizontal(|ui| {
                                     ui.label(timestamp.to_rfc3339());

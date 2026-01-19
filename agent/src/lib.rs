@@ -103,7 +103,7 @@ extern "C" fn class_load(
         );
 
         if !signature.is_null() {
-            let timestamp = Utc::now().timestamp_millis();
+            let timestamp = Utc::now().timestamp_micros();
             let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
             let name = signature
                 .strip_prefix("L")
