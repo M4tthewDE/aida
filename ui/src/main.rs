@@ -2,6 +2,7 @@ use core::f32;
 use std::{
     io::{BufRead, BufReader},
     process::{Command, Stdio},
+    sync::mpsc::{Receiver, Sender, TryRecvError},
 };
 
 use eframe::egui;
@@ -22,29 +23,37 @@ fn main() {
 }
 
 struct App {
+    rx: Receiver<shared::AgentMessage>,
+    tx: Sender<shared::AgentMessage>,
     command: String,
     stdout: Vec<String>,
     stderr: Vec<String>,
+    loaded_classes: Vec<String>,
 }
 
 impl App {
     fn new() -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
         Self {
+            rx,
+            tx,
             command: "java -jar agent/jars/hello_world.jar".to_owned(),
             stdout: Vec::new(),
             stderr: Vec::new(),
+            loaded_classes: Vec::new(),
         }
     }
 
     fn run_command(&mut self) {
         self.stdout = Vec::new();
+        self.loaded_classes = Vec::new();
 
         let (server, server_name): (IpcOneShotServer<shared::AgentMessage>, String) =
             IpcOneShotServer::new().unwrap();
 
-        std::thread::spawn(|| {
+        let tx = self.tx.clone();
+        std::thread::spawn(move || {
             let (rx, msg) = server.accept().unwrap();
-            dbg!(&msg);
 
             if matches!(msg, shared::AgentMessage::Unload) {
                 return;
@@ -52,10 +61,9 @@ impl App {
 
             loop {
                 let msg = rx.recv().unwrap();
-                dbg!(&msg);
                 match msg {
                     shared::AgentMessage::Unload => break,
-                    _ => {}
+                    msg => tx.send(msg).unwrap(),
                 }
             }
         });
@@ -90,10 +98,32 @@ impl App {
 
         cmd.wait().expect("failed to wait on command");
     }
+
+    fn receive_agent_msg(&mut self, ctx: &egui::Context) {
+        match self.rx.try_recv() {
+            Ok(msg) => {
+                match msg {
+                    shared::AgentMessage::ClassLoad(signature) => {
+                        self.loaded_classes.push(signature)
+                    }
+                    _ => {}
+                };
+
+                ctx.request_repaint();
+            }
+            Err(err) => {
+                if matches!(err, TryRecvError::Disconnected) {
+                    panic!("{}", err);
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.receive_agent_msg(ctx);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Aida");
             ui.add(egui::TextEdit::singleline(&mut self.command).desired_width(f32::INFINITY));
@@ -101,8 +131,6 @@ impl eframe::App for App {
             if ui.button("Run").clicked() {
                 self.run_command();
             }
-
-            ui.separator();
 
             if !self.stdout.is_empty() {
                 ui.heading("Stdout");
@@ -114,6 +142,16 @@ impl eframe::App for App {
                 ui.heading("Stderr");
                 let mut text = self.stderr.join("\n");
                 ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+            }
+
+            if !self.loaded_classes.is_empty() {
+                ui.separator();
+                ui.heading("Loaded classes");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for class in &self.loaded_classes {
+                        ui.label(class);
+                    }
+                });
             }
         });
     }

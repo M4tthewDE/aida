@@ -49,6 +49,7 @@ pub extern "C" fn agent_on_load(
 
         let callbacks = bindings::jvmtiEventCallbacks {
             VMInit: Some(vm_init),
+            ClassLoad: Some(class_load),
             ..Default::default()
         };
 
@@ -88,6 +89,34 @@ pub extern "C" fn agent_on_load(
         .unwrap();
 
     0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn class_load(
+    jvmti_env: *mut bindings::jvmtiEnv,
+    _env: *mut bindings::JNIEnv,
+    _jthread: bindings::jthread,
+    klass: bindings::jclass,
+) {
+    let mut signature: *mut i8 = std::ptr::null_mut();
+
+    unsafe {
+        (*(*jvmti_env)).GetClassSignature.unwrap()(
+            jvmti_env,
+            klass,
+            &mut signature,
+            &mut std::ptr::null_mut(),
+        );
+
+        if !signature.is_null() {
+            let signature = CStr::from_ptr(signature).to_string_lossy();
+            SENDER
+                .get()
+                .unwrap()
+                .send(shared::AgentMessage::ClassLoad(signature.to_string()))
+                .unwrap();
+        }
+    }
 }
 
 #[unsafe(no_mangle)]
