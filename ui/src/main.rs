@@ -24,6 +24,7 @@ fn main() {
 struct App {
     command: String,
     stdout: Vec<String>,
+    stderr: Vec<String>,
 }
 
 impl App {
@@ -31,6 +32,7 @@ impl App {
         Self {
             command: "java -jar agent/jars/hello_world.jar".to_owned(),
             stdout: Vec::new(),
+            stderr: Vec::new(),
         }
     }
 
@@ -69,14 +71,21 @@ impl App {
         let mut cmd = Command::new(program)
             .args(&args)
             .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("failed to execute");
 
         let stdout = cmd.stdout.take().expect("failed to capture stdout");
-        let reader = BufReader::new(stdout);
+        let stderr = cmd.stderr.take().expect("failed to capture stdout");
+        let stdout_reader = BufReader::new(stdout);
+        let stderr_reader = BufReader::new(stderr);
 
-        for line in reader.lines() {
+        for line in stdout_reader.lines() {
             self.stdout.push(line.unwrap());
+        }
+
+        for line in stderr_reader.lines() {
+            self.stderr.push(line.unwrap());
         }
 
         cmd.wait().expect("failed to wait on command");
@@ -98,11 +107,7 @@ impl eframe::App for App {
                 ui.heading("Stdout");
 
                 let mut text = self.stdout.join("\n");
-                ui.add(
-                    egui::TextEdit::multiline(&mut text)
-                        .desired_width(f32::INFINITY)
-                        .interactive(true),
-                );
+                ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
             }
         });
     }
