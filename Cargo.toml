@@ -4,3 +4,4 @@ resolver = "3"
 
 [workspace.dependencies]
 ipc-channel = "0.20.2"
+chrono = "0.4.43"

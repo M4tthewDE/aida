@@ -5,7 +5,8 @@ use std::{
     sync::mpsc::{Receiver, Sender, TryRecvError},
 };
 
-use eframe::egui;
+use chrono::{DateTime, Utc};
+use eframe::egui::{self, Color32, RichText};
 use ipc_channel::ipc::IpcOneShotServer;
 
 fn main() {
@@ -28,7 +29,7 @@ struct App {
     command: String,
     stdout: Vec<String>,
     stderr: Vec<String>,
-    loaded_classes: Vec<String>,
+    class_load_events: Vec<shared::ClassLoadEvent>,
 }
 
 impl App {
@@ -40,13 +41,13 @@ impl App {
             command: "java -jar agent/jars/hello_world.jar".to_owned(),
             stdout: Vec::new(),
             stderr: Vec::new(),
-            loaded_classes: Vec::new(),
+            class_load_events: Vec::new(),
         }
     }
 
     fn run_command(&mut self) {
         self.stdout = Vec::new();
-        self.loaded_classes = Vec::new();
+        self.class_load_events = Vec::new();
 
         let (server, server_name): (IpcOneShotServer<shared::AgentMessage>, String) =
             IpcOneShotServer::new().unwrap();
@@ -103,9 +104,7 @@ impl App {
         match self.rx.try_recv() {
             Ok(msg) => {
                 match msg {
-                    shared::AgentMessage::ClassLoad(signature) => {
-                        self.loaded_classes.push(signature)
-                    }
+                    shared::AgentMessage::ClassLoad(event) => self.class_load_events.push(event),
                     _ => {}
                 };
 
@@ -146,11 +145,19 @@ impl eframe::App for App {
                 });
             }
 
-            if !self.loaded_classes.is_empty() {
+            if !self.class_load_events.is_empty() {
                 ui.collapsing("Class load events", |ui| {
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        for class in &self.loaded_classes {
-                            ui.label(class);
+                        for class_load_event in &self.class_load_events {
+                            let timestamp: DateTime<Utc> =
+                                DateTime::from_timestamp_millis(class_load_event.timestamp)
+                                    .unwrap();
+                            ui.horizontal(|ui| {
+                                ui.label(timestamp.to_rfc3339());
+                                ui.label(
+                                    RichText::new(&class_load_event.name).color(Color32::WHITE),
+                                );
+                            });
                         }
                     });
                 });

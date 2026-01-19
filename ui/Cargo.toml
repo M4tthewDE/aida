@@ -7,3 +7,4 @@ edition = "2024"
 eframe = "0.33.3"
 ipc-channel = { workspace = true }
 shared = { version = "0.1.0", path = "../shared" }
+chrono = { workspace = true }

@@ -1,3 +1,4 @@
+use chrono::Utc;
 use ipc_channel::ipc::IpcSender;
 use std::{ffi::CStr, os::raw::c_int, sync::OnceLock};
 use tracing::debug;
@@ -109,11 +110,15 @@ pub extern "C" fn class_load(
         );
 
         if !signature.is_null() {
-            let signature = CStr::from_ptr(signature).to_string_lossy();
+            let name = CStr::from_ptr(signature).to_string_lossy().to_string();
+            let timestamp = Utc::now().timestamp_millis();
             SENDER
                 .get()
                 .unwrap()
-                .send(shared::AgentMessage::ClassLoad(signature.to_string()))
+                .send(shared::AgentMessage::ClassLoad(shared::ClassLoadEvent {
+                    timestamp,
+                    name,
+                }))
                 .unwrap();
         }
     }
