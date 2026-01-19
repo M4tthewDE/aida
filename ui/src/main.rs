@@ -133,24 +133,26 @@ impl eframe::App for App {
             }
 
             if !self.stdout.is_empty() {
-                ui.heading("Stdout");
-                let mut text = self.stdout.join("\n");
-                ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+                ui.collapsing("Stdout", |ui| {
+                    let mut text = self.stdout.join("\n");
+                    ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+                });
             }
 
             if !self.stderr.is_empty() {
-                ui.heading("Stderr");
-                let mut text = self.stderr.join("\n");
-                ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+                ui.collapsing("Stderr", |ui| {
+                    let mut text = self.stderr.join("\n");
+                    ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+                });
             }
 
             if !self.loaded_classes.is_empty() {
-                ui.separator();
-                ui.heading("Loaded classes");
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    for class in &self.loaded_classes {
-                        ui.label(class);
-                    }
+                ui.collapsing("Class load events", |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for class in &self.loaded_classes {
+                            ui.label(class);
+                        }
+                    });
                 });
             }
         });
