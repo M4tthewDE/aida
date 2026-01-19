@@ -87,7 +87,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Aida");
-            ui.text_edit_singleline(&mut self.command);
+            ui.add(egui::TextEdit::singleline(&mut self.command).desired_width(f32::INFINITY));
 
             if ui.button("Run").clicked() {
                 self.run_command();
