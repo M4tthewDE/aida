@@ -1,4 +1,8 @@
-use std::process::Command;
+use core::f32;
+use std::{
+    io::{BufRead, BufReader},
+    process::{Command, Stdio},
+};
 
 use eframe::egui;
 use ipc_channel::ipc::IpcOneShotServer;
@@ -41,6 +45,7 @@ fn main() {
 struct App {
     server_name: String,
     command: String,
+    stdout: Vec<String>,
 }
 
 impl App {
@@ -48,22 +53,33 @@ impl App {
         Self {
             server_name,
             command: "java -jar agent/jars/hello_world.jar".to_owned(),
+            stdout: Vec::new(),
         }
     }
 
     fn run_command(&mut self) {
         let mut parts = self.command.split_whitespace();
-        let program = parts.next().expect("nbo command");
+        let program = parts.next().expect("no command");
 
         let agent_path = format!("-agentpath:target/debug/libaida.so={}", self.server_name);
 
         let mut args = vec![agent_path.as_str()];
         args.extend(parts);
 
-        Command::new(program)
+        let mut cmd = Command::new(program)
             .args(&args)
-            .status()
+            .stdout(Stdio::piped())
+            .spawn()
             .expect("failed to execute");
+
+        let stdout = cmd.stdout.take().expect("faield to capture stdout");
+        let reader = BufReader::new(stdout);
+
+        for line in reader.lines() {
+            self.stdout.push(line.unwrap());
+        }
+
+        cmd.wait().expect("failed to wait on command");
     }
 }
 
@@ -74,6 +90,18 @@ impl eframe::App for App {
 
             if ui.button("Run").clicked() {
                 self.run_command();
+            }
+
+            if !self.stdout.is_empty() {
+                ui.separator();
+                ui.heading("Stdout");
+
+                let mut text = self.stdout.join("\n");
+                ui.add(
+                    egui::TextEdit::multiline(&mut text)
+                        .desired_width(f32::INFINITY)
+                        .interactive(true),
+                );
             }
         });
     }
