@@ -8,8 +8,6 @@ pub struct ClassLoadEvent {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum AgentMessage {
-    VmInit,
-    Load,
     Unload,
     ClassLoad(ClassLoadEvent),
 }
