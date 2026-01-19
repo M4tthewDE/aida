@@ -103,8 +103,14 @@ extern "C" fn class_load(
         );
 
         if !signature.is_null() {
-            let name = CStr::from_ptr(signature).to_string_lossy().to_string();
             let timestamp = Utc::now().timestamp_millis();
+            let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
+            let name = signature
+                .strip_prefix("L")
+                .unwrap()
+                .strip_suffix(";")
+                .unwrap()
+                .replace("/", ".");
             SENDER
                 .get()
                 .unwrap()
