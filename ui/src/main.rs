@@ -102,11 +102,17 @@ impl eframe::App for App {
                 self.run_command();
             }
 
-            if !self.stdout.is_empty() {
-                ui.separator();
-                ui.heading("Stdout");
+            ui.separator();
 
+            if !self.stdout.is_empty() {
+                ui.heading("Stdout");
                 let mut text = self.stdout.join("\n");
+                ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+            }
+
+            if !self.stderr.is_empty() {
+                ui.heading("Stderr");
+                let mut text = self.stderr.join("\n");
                 ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
             }
         });
