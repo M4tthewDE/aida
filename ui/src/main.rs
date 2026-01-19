@@ -146,21 +146,23 @@ impl eframe::App for App {
             }
 
             if !self.class_load_events.is_empty() {
-                ui.collapsing("Class load events", |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for class_load_event in &self.class_load_events {
-                            let timestamp: DateTime<Utc> =
-                                DateTime::from_timestamp_millis(class_load_event.timestamp)
-                                    .unwrap();
-                            ui.horizontal(|ui| {
-                                ui.label(timestamp.to_rfc3339());
-                                ui.label(
-                                    RichText::new(&class_load_event.name).color(Color32::WHITE),
-                                );
-                            });
-                        }
+                egui::CollapsingHeader::new("Class load events")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for class_load_event in &self.class_load_events {
+                                let timestamp: DateTime<Utc> =
+                                    DateTime::from_timestamp_millis(class_load_event.timestamp)
+                                        .unwrap();
+                                ui.horizontal(|ui| {
+                                    ui.label(timestamp.to_rfc3339());
+                                    ui.label(
+                                        RichText::new(&class_load_event.name).color(Color32::WHITE),
+                                    );
+                                });
+                            }
+                        });
                     });
-                });
             }
         });
     }
