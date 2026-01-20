@@ -30,6 +30,7 @@ struct App {
     stdout: Vec<String>,
     stderr: Vec<String>,
     class_load_events: Vec<shared::ClassLoadEvent>,
+    method_entry_events: Vec<shared::MethodEntryEvent>,
 }
 
 impl App {
@@ -42,12 +43,14 @@ impl App {
             stdout: Vec::new(),
             stderr: Vec::new(),
             class_load_events: Vec::new(),
+            method_entry_events: Vec::new(),
         }
     }
 
     fn run_command(&mut self) {
         self.stdout = Vec::new();
         self.class_load_events = Vec::new();
+        self.method_entry_events = Vec::new();
 
         let (server, server_name): (IpcOneShotServer<shared::AgentMessage>, String) =
             IpcOneShotServer::new().unwrap();
@@ -105,6 +108,9 @@ impl App {
             Ok(msg) => {
                 match msg {
                     shared::AgentMessage::ClassLoad(event) => self.class_load_events.push(event),
+                    shared::AgentMessage::MethodEntry(event) => {
+                        self.method_entry_events.push(event)
+                    }
                     _ => {}
                 };
 
@@ -146,23 +152,39 @@ impl eframe::App for App {
             }
 
             if !self.class_load_events.is_empty() {
-                egui::CollapsingHeader::new("Class load events")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for class_load_event in &self.class_load_events {
-                                let timestamp: DateTime<Utc> =
-                                    DateTime::from_timestamp_micros(class_load_event.timestamp)
-                                        .unwrap();
-                                ui.horizontal(|ui| {
-                                    ui.label(timestamp.to_rfc3339());
-                                    ui.label(
-                                        RichText::new(&class_load_event.name).color(Color32::WHITE),
-                                    );
-                                });
-                            }
-                        });
+                egui::CollapsingHeader::new("Class load events").show(ui, |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for class_load_event in &self.class_load_events {
+                            let timestamp: DateTime<Utc> =
+                                DateTime::from_timestamp_micros(class_load_event.timestamp)
+                                    .unwrap();
+                            ui.horizontal(|ui| {
+                                ui.label(timestamp.to_rfc3339());
+                                ui.label(
+                                    RichText::new(&class_load_event.name).color(Color32::WHITE),
+                                );
+                            });
+                        }
                     });
+                });
+            }
+
+            if !self.method_entry_events.is_empty() {
+                egui::CollapsingHeader::new("Method entry events").show(ui, |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for method_entry_event in &self.method_entry_events {
+                            let timestamp: DateTime<Utc> =
+                                DateTime::from_timestamp_micros(method_entry_event.timestamp)
+                                    .unwrap();
+                            ui.horizontal(|ui| {
+                                ui.label(timestamp.to_rfc3339());
+                                ui.label(
+                                    RichText::new(&method_entry_event.name).color(Color32::WHITE),
+                                );
+                            });
+                        }
+                    });
+                });
             }
         });
     }

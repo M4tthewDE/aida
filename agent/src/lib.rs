@@ -50,6 +50,7 @@ extern "C" fn agent_on_load(
 
         let callbacks = bindings::jvmtiEventCallbacks {
             ClassLoad: Some(class_load),
+            MethodEntry: Some(method_entry),
             ..Default::default()
         };
 
@@ -59,6 +60,12 @@ extern "C" fn agent_on_load(
             size_of::<bindings::jvmtiEventCallbacks>() as i32,
         );
 
+        assert_eq!(result, 0);
+
+        let mut capabilities: bindings::jvmtiCapabilities = std::mem::zeroed();
+        capabilities.set_can_generate_method_entry_events(1);
+
+        let result = (*(*env)).AddCapabilities.unwrap()(env, &capabilities);
         assert_eq!(result, 0);
 
         let result = (*(*env)).SetEventNotificationMode.unwrap()(
@@ -74,6 +81,15 @@ extern "C" fn agent_on_load(
             env,
             bindings::jvmtiEventMode_JVMTI_ENABLE,
             bindings::jvmtiEvent_JVMTI_EVENT_CLASS_LOAD,
+            std::ptr::null_mut(),
+        );
+
+        assert_eq!(result, 0);
+
+        let result = (*(*env)).SetEventNotificationMode.unwrap()(
+            env,
+            bindings::jvmtiEventMode_JVMTI_ENABLE,
+            bindings::jvmtiEvent_JVMTI_EVENT_METHOD_ENTRY,
             std::ptr::null_mut(),
         );
 
@@ -120,6 +136,35 @@ extern "C" fn class_load(
                 }))
                 .unwrap();
         }
+    }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn method_entry(
+    jvmti_env: *mut bindings::jvmtiEnv,
+    _env: *mut bindings::JNIEnv,
+    _jthread: bindings::jthread,
+    jmethod_id: bindings::jmethodID,
+) {
+    let mut name: *mut i8 = std::ptr::null_mut();
+
+    unsafe {
+        (*(*jvmti_env)).GetMethodName.unwrap()(
+            jvmti_env,
+            jmethod_id,
+            &mut name,
+            &mut std::ptr::null_mut(),
+            &mut std::ptr::null_mut(),
+        );
+        let name = CStr::from_ptr(name).to_string_lossy().to_string();
+        let timestamp = Utc::now().timestamp_micros();
+        SENDER
+            .get()
+            .unwrap()
+            .send(shared::AgentMessage::MethodEntry(
+                shared::MethodEntryEvent { timestamp, name },
+            ))
+            .unwrap();
     }
 }
 
