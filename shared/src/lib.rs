@@ -8,17 +8,32 @@ pub struct ClassLoadEvent {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct MethodEvent {
-    pub timestamp: i64,
-    pub name: String,
+pub enum MethodEvent {
+    Entry { timestamp: i64, name: String },
+    Exit { timestamp: i64, name: String },
+}
+
+impl MethodEvent {
+    pub fn timestamp(&self) -> i64 {
+        match self {
+            MethodEvent::Entry { timestamp, .. } => *timestamp,
+            MethodEvent::Exit { timestamp, .. } => *timestamp,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            MethodEvent::Entry { name, .. } => name,
+            MethodEvent::Exit { name, .. } => name,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum AgentMessage {
     Unload,
     ClassLoad(ClassLoadEvent),
-    MethodEntry(MethodEvent),
-    MethodExit(MethodEvent),
+    MethodEvent(MethodEvent),
 }
 
 #[derive(Deserialize, Debug)]

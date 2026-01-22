@@ -36,8 +36,7 @@ struct App {
     stdout: Vec<String>,
     stderr: Vec<String>,
     class_load_events: Vec<shared::ClassLoadEvent>,
-    method_entry_events: Vec<shared::MethodEvent>,
-    method_exit_events: Vec<shared::MethodEvent>,
+    method_events: Vec<shared::MethodEvent>,
     running_command: bool,
     done_command: bool,
 }
@@ -53,8 +52,7 @@ impl App {
             stdout: Vec::new(),
             stderr: Vec::new(),
             class_load_events: Vec::new(),
-            method_entry_events: Vec::new(),
-            method_exit_events: Vec::new(),
+            method_events: Vec::new(),
             running_command: false,
             done_command: false,
         }
@@ -124,10 +122,7 @@ impl App {
             Ok(msg) => {
                 match msg {
                     shared::AgentMessage::ClassLoad(event) => self.class_load_events.push(event),
-                    shared::AgentMessage::MethodEntry(event) => {
-                        self.method_entry_events.push(event)
-                    }
-                    shared::AgentMessage::MethodExit(event) => self.method_exit_events.push(event),
+                    shared::AgentMessage::MethodEvent(event) => self.method_events.push(event),
                     shared::AgentMessage::Unload => {
                         self.running_command = false;
                         self.done_command = true;
@@ -203,41 +198,27 @@ impl eframe::App for App {
                     });
             }
 
-            if !self.method_entry_events.is_empty() {
-                egui::CollapsingHeader::new("Method entry events")
+            if !self.method_events.is_empty() {
+                egui::CollapsingHeader::new("Method events")
                     .default_open(true)
                     .show(ui, |ui| {
                         egui::ScrollArea::vertical().show(ui, |ui| {
-                            for method_entry_event in &self.method_entry_events {
+                            for method_event in &self.method_events {
                                 let timestamp: DateTime<Utc> =
-                                    DateTime::from_timestamp_micros(method_entry_event.timestamp)
+                                    DateTime::from_timestamp_micros(method_event.timestamp())
                                         .unwrap();
                                 ui.horizontal(|ui| {
                                     ui.label(timestamp.to_rfc3339());
+                                    match method_event {
+                                        shared::MethodEvent::Entry { .. } => {
+                                            ui.label(RichText::new("->").color(Color32::GREEN))
+                                        }
+                                        shared::MethodEvent::Exit { .. } => {
+                                            ui.label(RichText::new("<-").color(Color32::RED))
+                                        }
+                                    };
                                     ui.label(
-                                        RichText::new(&method_entry_event.name)
-                                            .color(Color32::WHITE),
-                                    );
-                                });
-                            }
-                        });
-                    });
-            }
-
-            if !self.method_exit_events.is_empty() {
-                egui::CollapsingHeader::new("Method exit events")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for method_exit_event in &self.method_exit_events {
-                                let timestamp: DateTime<Utc> =
-                                    DateTime::from_timestamp_micros(method_exit_event.timestamp)
-                                        .unwrap();
-                                ui.horizontal(|ui| {
-                                    ui.label(timestamp.to_rfc3339());
-                                    ui.label(
-                                        RichText::new(&method_exit_event.name)
-                                            .color(Color32::WHITE),
+                                        RichText::new(method_event.name()).color(Color32::WHITE),
                                     );
                                 });
                             }
