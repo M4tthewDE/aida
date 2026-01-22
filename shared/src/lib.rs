@@ -8,7 +8,7 @@ pub struct ClassLoadEvent {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct MethodEntryEvent {
+pub struct MethodEvent {
     pub timestamp: i64,
     pub name: String,
 }
@@ -17,7 +17,8 @@ pub struct MethodEntryEvent {
 pub enum AgentMessage {
     Unload,
     ClassLoad(ClassLoadEvent),
-    MethodEntry(MethodEntryEvent),
+    MethodEntry(MethodEvent),
+    MethodExit(MethodEvent),
 }
 
 #[derive(Deserialize, Debug)]

@@ -59,6 +59,7 @@ extern "C" fn agent_on_load(
         let callbacks = bindings::jvmtiEventCallbacks {
             ClassLoad: Some(class_load),
             MethodEntry: Some(method_entry),
+            MethodExit: Some(method_exit),
             ..Default::default()
         };
 
@@ -72,6 +73,7 @@ extern "C" fn agent_on_load(
 
         let mut capabilities: bindings::jvmtiCapabilities = std::mem::zeroed();
         capabilities.set_can_generate_method_entry_events(1);
+        capabilities.set_can_generate_method_exit_events(1);
 
         let result = (*(*env)).AddCapabilities.unwrap()(env, &capabilities);
         assert_eq!(result, 0);
@@ -98,6 +100,15 @@ extern "C" fn agent_on_load(
             env,
             bindings::jvmtiEventMode_JVMTI_ENABLE,
             bindings::jvmtiEvent_JVMTI_EVENT_METHOD_ENTRY,
+            std::ptr::null_mut(),
+        );
+
+        assert_eq!(result, 0);
+
+        let result = (*(*env)).SetEventNotificationMode.unwrap()(
+            env,
+            bindings::jvmtiEventMode_JVMTI_ENABLE,
+            bindings::jvmtiEvent_JVMTI_EVENT_METHOD_EXIT,
             std::ptr::null_mut(),
         );
 
@@ -179,9 +190,47 @@ extern "C" fn method_entry(
         SENDER
             .get()
             .unwrap()
-            .send(shared::AgentMessage::MethodEntry(
-                shared::MethodEntryEvent { timestamp, name },
-            ))
+            .send(shared::AgentMessage::MethodEntry(shared::MethodEvent {
+                timestamp,
+                name,
+            }))
+            .unwrap();
+    }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn method_exit(
+    jvmti_env: *mut bindings::jvmtiEnv,
+    _env: *mut bindings::JNIEnv,
+    _jthread: bindings::jthread,
+    jmethod_id: bindings::jmethodID,
+    _was_popped_by_exception: bindings::jboolean,
+    _return_value: bindings::jvalue,
+) {
+    let mut name: *mut i8 = std::ptr::null_mut();
+
+    unsafe {
+        (*(*jvmti_env)).GetMethodName.unwrap()(
+            jvmti_env,
+            jmethod_id,
+            &mut name,
+            &mut std::ptr::null_mut(),
+            &mut std::ptr::null_mut(),
+        );
+        let name = CStr::from_ptr(name).to_string_lossy().to_string();
+
+        if !CONFIG.get().unwrap().methods.contains(&name) {
+            return;
+        }
+
+        let timestamp = Utc::now().timestamp_micros();
+        SENDER
+            .get()
+            .unwrap()
+            .send(shared::AgentMessage::MethodExit(shared::MethodEvent {
+                timestamp,
+                name,
+            }))
             .unwrap();
     }
 }
