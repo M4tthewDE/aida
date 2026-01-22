@@ -1,6 +1,7 @@
 use core::f32;
 use std::{
     io::{BufRead, BufReader},
+    path::PathBuf,
     process::{Command, Stdio},
     sync::mpsc::{Receiver, Sender, TryRecvError},
 };
@@ -9,7 +10,15 @@ use chrono::{DateTime, Utc};
 use eframe::egui::{self, Color32, RichText};
 use ipc_channel::ipc::IpcOneShotServer;
 
+use crate::config::Config;
+
+mod config;
+
 fn main() {
+    let config_arg = std::env::args().nth(1).unwrap();
+    let config_path = PathBuf::from(config_arg);
+    let config = config::load(config_path);
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
@@ -18,7 +27,7 @@ fn main() {
     eframe::run_native(
         "Confirm exit",
         options,
-        Box::new(|_cc| Ok(Box::new(App::new()))),
+        Box::new(|_cc| Ok(Box::new(App::new(config)))),
     )
     .unwrap();
 }
@@ -26,26 +35,28 @@ fn main() {
 struct App {
     rx: Receiver<shared::AgentMessage>,
     tx: Sender<shared::AgentMessage>,
-    command: String,
+    config: Config,
     stdout: Vec<String>,
     stderr: Vec<String>,
     class_load_events: Vec<shared::ClassLoadEvent>,
     method_entry_events: Vec<shared::MethodEntryEvent>,
     running_command: bool,
+    done_command: bool,
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(config: Config) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
         Self {
             rx,
             tx,
-            command: "java -jar agent/jars/hello_world.jar".to_owned(),
+            config,
             stdout: Vec::new(),
             stderr: Vec::new(),
             class_load_events: Vec::new(),
             method_entry_events: Vec::new(),
             running_command: false,
+            done_command: false,
         }
     }
 
@@ -78,17 +89,13 @@ impl App {
             }
         });
 
-        let mut parts = self.command.split_whitespace();
-        let program = parts.next().expect("no command");
-
         let agent_path = format!("-agentpath:target/debug/libaida.so={}", server_name);
 
-        let mut args = vec![agent_path.as_str()];
-        args.extend(parts);
+        let args = vec![agent_path.as_str(), "-jar", &self.config.jar];
 
         self.running_command = true;
 
-        let mut cmd = Command::new(program)
+        let mut cmd = Command::new("java")
             .args(&args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -119,7 +126,10 @@ impl App {
                     shared::AgentMessage::MethodEntry(event) => {
                         self.method_entry_events.push(event)
                     }
-                    shared::AgentMessage::Unload => self.running_command = false,
+                    shared::AgentMessage::Unload => {
+                        self.running_command = false;
+                        self.done_command = true;
+                    }
                 };
 
                 ctx.request_repaint();
@@ -135,17 +145,15 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !self.done_command && !self.running_command {
+            self.run_command();
+        }
+
         self.receive_agent_msg(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Aida");
-            ui.add(egui::TextEdit::singleline(&mut self.command).desired_width(f32::INFINITY));
-
             ui.horizontal(|ui| {
-                if ui.button("Run").clicked() {
-                    self.run_command();
-                }
-
+                ui.heading("Aida");
                 if self.running_command {
                     ui.label(RichText::new("Running...").color(Color32::GREEN));
                 }
