@@ -52,10 +52,28 @@ pub enum AgentMessage {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct MethodConfig {
+    pub name: String,
+    pub class: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Config {
     pub jar: String,
     pub class_loads: Vec<String>,
-    pub methods: Vec<String>,
+    pub methods: Vec<MethodConfig>,
+}
+
+impl Config {
+    pub fn includes_method(&self, name: &str, class: &str) -> bool {
+        for method in &self.methods {
+            if method.name == name && method.class == class {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 pub fn load_config(path: PathBuf) -> Config {

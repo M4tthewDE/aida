@@ -182,10 +182,6 @@ extern "C" fn method_entry(
         );
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
 
-        if !CONFIG.get().unwrap().methods.contains(&name) {
-            return;
-        }
-
         let mut class: bindings::jclass = std::ptr::null_mut();
 
         (*(*jvmti_env)).GetMethodDeclaringClass.unwrap()(jvmti_env, jmethod_id, &mut class);
@@ -205,6 +201,10 @@ extern "C" fn method_entry(
             .strip_suffix(";")
             .unwrap()
             .replace("/", ".");
+
+        if !CONFIG.get().unwrap().includes_method(&name, &class_name) {
+            return;
+        }
 
         let timestamp = Utc::now().timestamp_micros();
         SENDER
@@ -243,10 +243,6 @@ extern "C" fn method_exit(
 
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
 
-        if !CONFIG.get().unwrap().methods.contains(&name) {
-            return;
-        }
-
         let mut class: bindings::jclass = std::ptr::null_mut();
 
         (*(*jvmti_env)).GetMethodDeclaringClass.unwrap()(jvmti_env, jmethod_id, &mut class);
@@ -266,6 +262,10 @@ extern "C" fn method_exit(
             .strip_suffix(";")
             .unwrap()
             .replace("/", ".");
+
+        if !CONFIG.get().unwrap().includes_method(&name, &class_name) {
+            return;
+        }
 
         let timestamp = Utc::now().timestamp_micros();
         SENDER

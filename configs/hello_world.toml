@@ -1,4 +1,11 @@
 jar = 'jars/hello_world.jar'
 
 class_loads = [ 'java.lang.String', 'java.util.IdentityHashMap' ]
-methods = [ 'main' ]
+
+[[methods]]
+name = '<init>'
+class = 'java.lang.String'
+
+[[methods]]
+name = '<init>'
+class = 'java.lang.Thread'
