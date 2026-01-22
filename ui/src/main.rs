@@ -163,53 +163,62 @@ impl eframe::App for App {
             });
 
             if !self.stdout.is_empty() {
-                ui.collapsing("Stdout", |ui| {
-                    let mut text = self.stdout.join("\n");
-                    ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
-                });
+                egui::CollapsingHeader::new("Stdout")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        let mut text = self.stdout.join("\n");
+                        ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+                    });
             }
 
             if !self.stderr.is_empty() {
-                ui.collapsing("Stderr", |ui| {
-                    let mut text = self.stderr.join("\n");
-                    ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
-                });
+                egui::CollapsingHeader::new("Stderr")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        let mut text = self.stderr.join("\n");
+                        ui.add(egui::TextEdit::multiline(&mut text).desired_width(f32::INFINITY));
+                    });
             }
 
             if !self.class_load_events.is_empty() {
-                egui::CollapsingHeader::new("Class load events").show(ui, |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for class_load_event in &self.class_load_events {
-                            let timestamp: DateTime<Utc> =
-                                DateTime::from_timestamp_micros(class_load_event.timestamp)
-                                    .unwrap();
-                            ui.horizontal(|ui| {
-                                ui.label(timestamp.to_rfc3339());
-                                ui.label(
-                                    RichText::new(&class_load_event.name).color(Color32::WHITE),
-                                );
-                            });
-                        }
+                egui::CollapsingHeader::new("Class load events")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for class_load_event in &self.class_load_events {
+                                let timestamp: DateTime<Utc> =
+                                    DateTime::from_timestamp_micros(class_load_event.timestamp)
+                                        .unwrap();
+                                ui.horizontal(|ui| {
+                                    ui.label(timestamp.to_rfc3339());
+                                    ui.label(
+                                        RichText::new(&class_load_event.name).color(Color32::WHITE),
+                                    );
+                                });
+                            }
+                        });
                     });
-                });
             }
 
             if !self.method_entry_events.is_empty() {
-                egui::CollapsingHeader::new("Method entry events").show(ui, |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for method_entry_event in &self.method_entry_events {
-                            let timestamp: DateTime<Utc> =
-                                DateTime::from_timestamp_micros(method_entry_event.timestamp)
-                                    .unwrap();
-                            ui.horizontal(|ui| {
-                                ui.label(timestamp.to_rfc3339());
-                                ui.label(
-                                    RichText::new(&method_entry_event.name).color(Color32::WHITE),
-                                );
-                            });
-                        }
+                egui::CollapsingHeader::new("Method entry events")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for method_entry_event in &self.method_entry_events {
+                                let timestamp: DateTime<Utc> =
+                                    DateTime::from_timestamp_micros(method_entry_event.timestamp)
+                                        .unwrap();
+                                ui.horizontal(|ui| {
+                                    ui.label(timestamp.to_rfc3339());
+                                    ui.label(
+                                        RichText::new(&method_entry_event.name)
+                                            .color(Color32::WHITE),
+                                    );
+                                });
+                            }
+                        });
                     });
-                });
             }
         });
     }
