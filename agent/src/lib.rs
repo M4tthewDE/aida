@@ -125,14 +125,14 @@ extern "C" fn class_load(
     jvmti_env: *mut bindings::jvmtiEnv,
     _env: *mut bindings::JNIEnv,
     _jthread: bindings::jthread,
-    klass: bindings::jclass,
+    class: bindings::jclass,
 ) {
     let mut signature: *mut i8 = std::ptr::null_mut();
 
     unsafe {
         (*(*jvmti_env)).GetClassSignature.unwrap()(
             jvmti_env,
-            klass,
+            class,
             &mut signature,
             &mut std::ptr::null_mut(),
         );
@@ -186,12 +186,36 @@ extern "C" fn method_entry(
             return;
         }
 
+        let mut class: bindings::jclass = std::ptr::null_mut();
+
+        (*(*jvmti_env)).GetMethodDeclaringClass.unwrap()(jvmti_env, jmethod_id, &mut class);
+
+        let mut signature: *mut i8 = std::ptr::null_mut();
+        (*(*jvmti_env)).GetClassSignature.unwrap()(
+            jvmti_env,
+            class,
+            &mut signature,
+            &mut std::ptr::null_mut(),
+        );
+
+        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
+        let class_name = signature
+            .strip_prefix("L")
+            .unwrap()
+            .strip_suffix(";")
+            .unwrap()
+            .replace("/", ".");
+
         let timestamp = Utc::now().timestamp_micros();
         SENDER
             .get()
             .unwrap()
             .send(shared::AgentMessage::MethodEvent(
-                shared::MethodEvent::Entry { timestamp, name },
+                shared::MethodEvent::Entry {
+                    timestamp,
+                    name,
+                    class_name,
+                },
             ))
             .unwrap();
     }
@@ -216,18 +240,43 @@ extern "C" fn method_exit(
             &mut std::ptr::null_mut(),
             &mut std::ptr::null_mut(),
         );
+
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
 
         if !CONFIG.get().unwrap().methods.contains(&name) {
             return;
         }
 
+        let mut class: bindings::jclass = std::ptr::null_mut();
+
+        (*(*jvmti_env)).GetMethodDeclaringClass.unwrap()(jvmti_env, jmethod_id, &mut class);
+
+        let mut signature: *mut i8 = std::ptr::null_mut();
+        (*(*jvmti_env)).GetClassSignature.unwrap()(
+            jvmti_env,
+            class,
+            &mut signature,
+            &mut std::ptr::null_mut(),
+        );
+
+        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
+        let class_name = signature
+            .strip_prefix("L")
+            .unwrap()
+            .strip_suffix(";")
+            .unwrap()
+            .replace("/", ".");
+
         let timestamp = Utc::now().timestamp_micros();
         SENDER
             .get()
             .unwrap()
             .send(shared::AgentMessage::MethodEvent(
-                shared::MethodEvent::Exit { timestamp, name },
+                shared::MethodEvent::Exit {
+                    timestamp,
+                    name,
+                    class_name,
+                },
             ))
             .unwrap();
     }

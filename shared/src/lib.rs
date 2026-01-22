@@ -9,8 +9,16 @@ pub struct ClassLoadEvent {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum MethodEvent {
-    Entry { timestamp: i64, name: String },
-    Exit { timestamp: i64, name: String },
+    Entry {
+        timestamp: i64,
+        name: String,
+        class_name: String,
+    },
+    Exit {
+        timestamp: i64,
+        name: String,
+        class_name: String,
+    },
 }
 
 impl MethodEvent {
@@ -25,6 +33,13 @@ impl MethodEvent {
         match self {
             MethodEvent::Entry { name, .. } => name,
             MethodEvent::Exit { name, .. } => name,
+        }
+    }
+
+    pub fn class_name(&self) -> &str {
+        match self {
+            MethodEvent::Entry { class_name, .. } => class_name,
+            MethodEvent::Exit { class_name, .. } => class_name,
         }
     }
 }

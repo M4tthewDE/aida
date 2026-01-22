@@ -218,6 +218,10 @@ impl eframe::App for App {
                                         }
                                     };
                                     ui.label(
+                                        RichText::new(method_event.class_name())
+                                            .color(Color32::WHITE),
+                                    );
+                                    ui.label(
                                         RichText::new(method_event.name()).color(Color32::WHITE),
                                     );
                                 });
