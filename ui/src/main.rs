@@ -160,6 +160,10 @@ impl eframe::App for App {
                 if self.running_command {
                     ui.label(RichText::new("Running...").color(Color32::GREEN));
                 }
+
+                if self.done_command {
+                    ui.label(RichText::new("Done").color(Color32::GREEN));
+                }
             });
 
             if !self.stdout.is_empty() {
