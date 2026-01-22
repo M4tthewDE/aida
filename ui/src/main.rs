@@ -10,14 +10,10 @@ use chrono::{DateTime, Utc};
 use eframe::egui::{self, Color32, RichText};
 use ipc_channel::ipc::IpcOneShotServer;
 
-use crate::config::Config;
-
-mod config;
-
 fn main() {
     let config_arg = std::env::args().nth(1).unwrap();
-    let config_path = PathBuf::from(config_arg);
-    let config = config::load(config_path);
+    let config_path = PathBuf::from(config_arg.clone());
+    let config = shared::load_config(config_path);
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
@@ -27,7 +23,7 @@ fn main() {
     eframe::run_native(
         "Confirm exit",
         options,
-        Box::new(|_cc| Ok(Box::new(App::new(config)))),
+        Box::new(|_cc| Ok(Box::new(App::new(config, config_arg)))),
     )
     .unwrap();
 }
@@ -35,7 +31,8 @@ fn main() {
 struct App {
     rx: Receiver<shared::AgentMessage>,
     tx: Sender<shared::AgentMessage>,
-    config: Config,
+    config: shared::Config,
+    config_arg: String,
     stdout: Vec<String>,
     stderr: Vec<String>,
     class_load_events: Vec<shared::ClassLoadEvent>,
@@ -45,12 +42,13 @@ struct App {
 }
 
 impl App {
-    fn new(config: Config) -> Self {
+    fn new(config: shared::Config, config_arg: String) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
         Self {
             rx,
             tx,
             config,
+            config_arg,
             stdout: Vec::new(),
             stderr: Vec::new(),
             class_load_events: Vec::new(),
@@ -75,6 +73,8 @@ impl App {
             if matches!(msg, shared::AgentMessage::Unload) {
                 tx.send(msg).unwrap();
                 return;
+            } else {
+                tx.send(msg).unwrap();
             }
 
             loop {
@@ -89,7 +89,10 @@ impl App {
             }
         });
 
-        let agent_path = format!("-agentpath:target/debug/libaida.so={}", server_name);
+        let agent_path = format!(
+            "-agentpath:target/debug/libaida.so={},{}",
+            server_name, self.config_arg
+        );
 
         let args = vec![agent_path.as_str(), "-jar", &self.config.jar];
 

@@ -1,6 +1,6 @@
 use chrono::Utc;
 use ipc_channel::ipc::IpcSender;
-use std::{ffi::CStr, os::raw::c_int, sync::OnceLock};
+use std::{ffi::CStr, os::raw::c_int, path::PathBuf, sync::OnceLock};
 use tracing::debug;
 use tracing_subscriber::{
     EnvFilter,
@@ -15,6 +15,7 @@ mod bindings {
 }
 
 static SENDER: OnceLock<IpcSender<shared::AgentMessage>> = OnceLock::new();
+static CONFIG: OnceLock<shared::Config> = OnceLock::new();
 
 #[unsafe(export_name = "Agent_OnLoad")]
 extern "C" fn agent_on_load(
@@ -29,7 +30,14 @@ extern "C" fn agent_on_load(
         .ok();
 
     unsafe {
-        let server_name = CStr::from_ptr(options).to_str().unwrap();
+        let options = CStr::from_ptr(options).to_str().unwrap();
+        let mut options = options.split(",");
+        let server_name = options.next().unwrap();
+        let config_arg = options.next().unwrap();
+        let config_path = PathBuf::from(config_arg);
+        let config = shared::load_config(config_path);
+        CONFIG.set(config).unwrap();
+
         let tx: IpcSender<shared::AgentMessage> =
             IpcSender::connect(server_name.to_string()).unwrap();
         SENDER.set(tx).unwrap();
@@ -127,6 +135,11 @@ extern "C" fn class_load(
                 .strip_suffix(";")
                 .unwrap()
                 .replace("/", ".");
+
+            if !CONFIG.get().unwrap().class_loads.contains(&name) {
+                return;
+            }
+
             SENDER
                 .get()
                 .unwrap()
@@ -157,6 +170,11 @@ extern "C" fn method_entry(
             &mut std::ptr::null_mut(),
         );
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
+
+        if !CONFIG.get().unwrap().methods.contains(&name) {
+            return;
+        }
+
         let timestamp = Utc::now().timestamp_micros();
         SENDER
             .get()

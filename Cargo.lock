@@ -2792,6 +2792,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "serde",
+ "toml",
 ]
 
 [[package]]
@@ -3224,9 +3225,7 @@ dependencies = [
  "chrono",
  "eframe",
  "ipc-channel",
- "serde",
  "shared",
- "toml",
 ]
 
 [[package]]
