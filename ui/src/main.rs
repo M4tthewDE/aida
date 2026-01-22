@@ -152,7 +152,7 @@ impl eframe::App for App {
             ui.horizontal(|ui| {
                 ui.heading("Aida");
                 if self.running_command {
-                    ui.label(RichText::new("Running...").color(Color32::GREEN));
+                    ui.label(RichText::new("Running...").color(Color32::YELLOW));
                 }
 
                 if self.done_command {
@@ -182,19 +182,22 @@ impl eframe::App for App {
                 egui::CollapsingHeader::new("Class load events")
                     .default_open(true)
                     .show(ui, |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for class_load_event in &self.class_load_events {
-                                let timestamp: DateTime<Utc> =
-                                    DateTime::from_timestamp_micros(class_load_event.timestamp)
-                                        .unwrap();
-                                ui.horizontal(|ui| {
-                                    ui.label(timestamp.to_rfc3339());
-                                    ui.label(
-                                        RichText::new(&class_load_event.name).color(Color32::WHITE),
-                                    );
-                                });
-                            }
-                        });
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, true])
+                            .show(ui, |ui| {
+                                for class_load_event in &self.class_load_events {
+                                    let timestamp: DateTime<Utc> =
+                                        DateTime::from_timestamp_micros(class_load_event.timestamp)
+                                            .unwrap();
+                                    ui.horizontal(|ui| {
+                                        ui.label(timestamp.to_rfc3339());
+                                        ui.label(
+                                            RichText::new(&class_load_event.name)
+                                                .color(Color32::WHITE),
+                                        );
+                                    });
+                                }
+                            });
                     });
             }
 
@@ -202,31 +205,34 @@ impl eframe::App for App {
                 egui::CollapsingHeader::new("Method events")
                     .default_open(true)
                     .show(ui, |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for method_event in &self.method_events {
-                                let timestamp: DateTime<Utc> =
-                                    DateTime::from_timestamp_micros(method_event.timestamp())
-                                        .unwrap();
-                                ui.horizontal(|ui| {
-                                    ui.label(timestamp.to_rfc3339());
-                                    match method_event {
-                                        shared::MethodEvent::Entry { .. } => {
-                                            ui.label(RichText::new("->").color(Color32::GREEN))
-                                        }
-                                        shared::MethodEvent::Exit { .. } => {
-                                            ui.label(RichText::new("<-").color(Color32::RED))
-                                        }
-                                    };
-                                    ui.label(
-                                        RichText::new(method_event.class_name())
-                                            .color(Color32::WHITE),
-                                    );
-                                    ui.label(
-                                        RichText::new(method_event.name()).color(Color32::WHITE),
-                                    );
-                                });
-                            }
-                        });
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, true])
+                            .show(ui, |ui| {
+                                for method_event in &self.method_events {
+                                    let timestamp: DateTime<Utc> =
+                                        DateTime::from_timestamp_micros(method_event.timestamp())
+                                            .unwrap();
+                                    ui.horizontal(|ui| {
+                                        ui.label(timestamp.to_rfc3339());
+                                        match method_event {
+                                            shared::MethodEvent::Entry { .. } => {
+                                                ui.label(RichText::new("->").color(Color32::GREEN))
+                                            }
+                                            shared::MethodEvent::Exit { .. } => {
+                                                ui.label(RichText::new("<-").color(Color32::RED))
+                                            }
+                                        };
+                                        ui.label(
+                                            RichText::new(method_event.class_name())
+                                                .color(Color32::WHITE),
+                                        );
+                                        ui.label(
+                                            RichText::new(method_event.name())
+                                                .color(Color32::WHITE),
+                                        );
+                                    });
+                                }
+                            });
                     });
             }
         });
