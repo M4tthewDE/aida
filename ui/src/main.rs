@@ -31,6 +31,7 @@ struct App {
     stderr: Vec<String>,
     class_load_events: Vec<shared::ClassLoadEvent>,
     method_entry_events: Vec<shared::MethodEntryEvent>,
+    running_command: bool,
 }
 
 impl App {
@@ -44,6 +45,7 @@ impl App {
             stderr: Vec::new(),
             class_load_events: Vec::new(),
             method_entry_events: Vec::new(),
+            running_command: false,
         }
     }
 
@@ -60,13 +62,17 @@ impl App {
             let (rx, msg) = server.accept().unwrap();
 
             if matches!(msg, shared::AgentMessage::Unload) {
+                tx.send(msg).unwrap();
                 return;
             }
 
             loop {
                 let msg = rx.recv().unwrap();
                 match msg {
-                    shared::AgentMessage::Unload => break,
+                    shared::AgentMessage::Unload => {
+                        tx.send(msg).unwrap();
+                        break;
+                    }
                     msg => tx.send(msg).unwrap(),
                 }
             }
@@ -79,6 +85,8 @@ impl App {
 
         let mut args = vec![agent_path.as_str()];
         args.extend(parts);
+
+        self.running_command = true;
 
         let mut cmd = Command::new(program)
             .args(&args)
@@ -111,7 +119,7 @@ impl App {
                     shared::AgentMessage::MethodEntry(event) => {
                         self.method_entry_events.push(event)
                     }
-                    _ => {}
+                    shared::AgentMessage::Unload => self.running_command = false,
                 };
 
                 ctx.request_repaint();
@@ -133,9 +141,15 @@ impl eframe::App for App {
             ui.heading("Aida");
             ui.add(egui::TextEdit::singleline(&mut self.command).desired_width(f32::INFINITY));
 
-            if ui.button("Run").clicked() {
-                self.run_command();
-            }
+            ui.horizontal(|ui| {
+                if ui.button("Run").clicked() {
+                    self.run_command();
+                }
+
+                if self.running_command {
+                    ui.label(RichText::new("Running...").color(Color32::GREEN));
+                }
+            });
 
             if !self.stdout.is_empty() {
                 ui.collapsing("Stdout", |ui| {
