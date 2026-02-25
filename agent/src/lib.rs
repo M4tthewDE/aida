@@ -9,6 +9,10 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
 };
 
+use crate::descriptor::MethodDescriptor;
+
+mod descriptor;
+
 #[allow(warnings)]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -127,39 +131,22 @@ extern "C" fn class_load(
     _jthread: bindings::jthread,
     class: bindings::jclass,
 ) {
-    let mut signature: *mut i8 = std::ptr::null_mut();
-
     unsafe {
-        (*(*jvmti_env)).GetClassSignature.unwrap()(
-            jvmti_env,
-            class,
-            &mut signature,
-            &mut std::ptr::null_mut(),
-        );
+        let name = get_class(jvmti_env, class);
+        let timestamp = Utc::now().timestamp_micros();
 
-        if !signature.is_null() {
-            let timestamp = Utc::now().timestamp_micros();
-            let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
-            let name = signature
-                .strip_prefix("L")
-                .unwrap()
-                .strip_suffix(";")
-                .unwrap()
-                .replace("/", ".");
-
-            if !CONFIG.get().unwrap().class_loads.contains(&name) {
-                return;
-            }
-
-            SENDER
-                .get()
-                .unwrap()
-                .send(shared::AgentMessage::ClassLoad(shared::ClassLoadEvent {
-                    timestamp,
-                    name,
-                }))
-                .unwrap();
+        if !CONFIG.get().unwrap().class_loads.contains(&name) {
+            return;
         }
+
+        SENDER
+            .get()
+            .unwrap()
+            .send(shared::AgentMessage::ClassLoad(shared::ClassLoadEvent {
+                timestamp,
+                name,
+            }))
+            .unwrap();
     }
 }
 
@@ -171,36 +158,25 @@ extern "C" fn method_entry(
     jmethod_id: bindings::jmethodID,
 ) {
     let mut name: *mut i8 = std::ptr::null_mut();
+    let mut signature: *mut i8 = std::ptr::null_mut();
 
     unsafe {
         (*(*jvmti_env)).GetMethodName.unwrap()(
             jvmti_env,
             jmethod_id,
             &mut name,
-            &mut std::ptr::null_mut(),
+            &mut signature,
             &mut std::ptr::null_mut(),
         );
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
+        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
+        let descriptor = MethodDescriptor::new(&signature).to_string();
 
         let mut class: bindings::jclass = std::ptr::null_mut();
 
         (*(*jvmti_env)).GetMethodDeclaringClass.unwrap()(jvmti_env, jmethod_id, &mut class);
 
-        let mut signature: *mut i8 = std::ptr::null_mut();
-        (*(*jvmti_env)).GetClassSignature.unwrap()(
-            jvmti_env,
-            class,
-            &mut signature,
-            &mut std::ptr::null_mut(),
-        );
-
-        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
-        let class_name = signature
-            .strip_prefix("L")
-            .unwrap()
-            .strip_suffix(";")
-            .unwrap()
-            .replace("/", ".");
+        let class_name = get_class(jvmti_env, class);
 
         if !CONFIG.get().unwrap().includes_method(&name, &class_name) {
             return;
@@ -215,6 +191,7 @@ extern "C" fn method_entry(
                     timestamp,
                     name,
                     class_name,
+                    descriptor,
                 },
             ))
             .unwrap();
@@ -231,37 +208,26 @@ extern "C" fn method_exit(
     _return_value: bindings::jvalue,
 ) {
     let mut name: *mut i8 = std::ptr::null_mut();
+    let mut signature: *mut i8 = std::ptr::null_mut();
 
     unsafe {
         (*(*jvmti_env)).GetMethodName.unwrap()(
             jvmti_env,
             jmethod_id,
             &mut name,
-            &mut std::ptr::null_mut(),
+            &mut signature,
             &mut std::ptr::null_mut(),
         );
 
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
+        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
+        let descriptor = MethodDescriptor::new(&signature).to_string();
 
         let mut class: bindings::jclass = std::ptr::null_mut();
 
         (*(*jvmti_env)).GetMethodDeclaringClass.unwrap()(jvmti_env, jmethod_id, &mut class);
 
-        let mut signature: *mut i8 = std::ptr::null_mut();
-        (*(*jvmti_env)).GetClassSignature.unwrap()(
-            jvmti_env,
-            class,
-            &mut signature,
-            &mut std::ptr::null_mut(),
-        );
-
-        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
-        let class_name = signature
-            .strip_prefix("L")
-            .unwrap()
-            .strip_suffix(";")
-            .unwrap()
-            .replace("/", ".");
+        let class_name = get_class(jvmti_env, class);
 
         if !CONFIG.get().unwrap().includes_method(&name, &class_name) {
             return;
@@ -276,9 +242,31 @@ extern "C" fn method_exit(
                     timestamp,
                     name,
                     class_name,
+                    descriptor,
                 },
             ))
             .unwrap();
+    }
+}
+
+unsafe fn get_class(jvmti_env: *mut bindings::jvmtiEnv, class: bindings::jclass) -> String {
+    let mut signature: *mut i8 = std::ptr::null_mut();
+
+    unsafe {
+        (*(*jvmti_env)).GetClassSignature.unwrap()(
+            jvmti_env,
+            class,
+            &mut signature,
+            &mut std::ptr::null_mut(),
+        );
+
+        let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
+        signature
+            .strip_prefix("L")
+            .unwrap()
+            .strip_suffix(";")
+            .unwrap()
+            .replace("/", ".")
     }
 }
 

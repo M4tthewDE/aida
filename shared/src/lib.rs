@@ -13,11 +13,13 @@ pub enum MethodEvent {
         timestamp: i64,
         name: String,
         class_name: String,
+        descriptor: String,
     },
     Exit {
         timestamp: i64,
         name: String,
         class_name: String,
+        descriptor: String,
     },
 }
 
@@ -40,6 +42,19 @@ impl MethodEvent {
         match self {
             MethodEvent::Entry { class_name, .. } => class_name,
             MethodEvent::Exit { class_name, .. } => class_name,
+        }
+    }
+
+    pub fn signature(&self) -> &str {
+        match self {
+            MethodEvent::Entry {
+                descriptor: signature,
+                ..
+            } => signature,
+            MethodEvent::Exit {
+                descriptor: signature,
+                ..
+            } => signature,
         }
     }
 }

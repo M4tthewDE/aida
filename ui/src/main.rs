@@ -230,6 +230,10 @@ impl eframe::App for App {
                                             RichText::new(method_event.name())
                                                 .color(Color32::WHITE),
                                         );
+                                        ui.label(
+                                            RichText::new(method_event.signature())
+                                                .color(Color32::WHITE),
+                                        );
                                     });
                                 }
                             });
