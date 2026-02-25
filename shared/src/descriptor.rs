@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct MethodDescriptor {
     pub return_descriptor: ReturnDescriptor,
     pub parameters: Vec<FieldType>,
@@ -59,13 +61,13 @@ impl MethodDescriptor {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum ReturnDescriptor {
     Void,
     FieldType(FieldType),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum FieldType {
     Base(BaseType),
     Object { class_name: String },
@@ -82,7 +84,7 @@ impl Display for FieldType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum BaseType {
     Byte,
     Char,

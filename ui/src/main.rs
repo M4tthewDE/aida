@@ -223,15 +223,16 @@ impl eframe::App for App {
                                             }
                                         };
                                         ui.label(
-                                            RichText::new(method_event.class_name())
+                                            RichText::new(method_event.class().name())
                                                 .color(Color32::WHITE),
-                                        );
+                                        )
+                                        .on_hover_text(method_event.class().to_string());
                                         ui.label(
                                             RichText::new(method_event.name())
                                                 .color(Color32::WHITE),
                                         );
                                         ui.label(
-                                            RichText::new(method_event.signature())
+                                            RichText::new(method_event.descriptor().to_string())
                                                 .color(Color32::WHITE),
                                         );
                                     });

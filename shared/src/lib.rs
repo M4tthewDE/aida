@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+use crate::{class::ClassIdentifier, descriptor::MethodDescriptor};
+
+pub mod class;
+pub mod descriptor;
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ClassLoadEvent {
     pub timestamp: i64,
@@ -12,14 +17,14 @@ pub enum MethodEvent {
     Entry {
         timestamp: i64,
         name: String,
-        class_name: String,
-        descriptor: String,
+        class_identifier: ClassIdentifier,
+        descriptor: MethodDescriptor,
     },
     Exit {
         timestamp: i64,
         name: String,
-        class_name: String,
-        descriptor: String,
+        class_identifier: ClassIdentifier,
+        descriptor: MethodDescriptor,
     },
 }
 
@@ -38,23 +43,21 @@ impl MethodEvent {
         }
     }
 
-    pub fn class_name(&self) -> &str {
+    pub fn class(&self) -> &ClassIdentifier {
         match self {
-            MethodEvent::Entry { class_name, .. } => class_name,
-            MethodEvent::Exit { class_name, .. } => class_name,
+            MethodEvent::Entry {
+                class_identifier, ..
+            } => class_identifier,
+            MethodEvent::Exit {
+                class_identifier, ..
+            } => class_identifier,
         }
     }
 
-    pub fn signature(&self) -> &str {
+    pub fn descriptor(&self) -> &MethodDescriptor {
         match self {
-            MethodEvent::Entry {
-                descriptor: signature,
-                ..
-            } => signature,
-            MethodEvent::Exit {
-                descriptor: signature,
-                ..
-            } => signature,
+            MethodEvent::Entry { descriptor, .. } => descriptor,
+            MethodEvent::Exit { descriptor, .. } => descriptor,
         }
     }
 }

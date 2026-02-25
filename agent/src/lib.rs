@@ -1,5 +1,6 @@
 use chrono::Utc;
 use ipc_channel::ipc::IpcSender;
+use shared::{class::ClassIdentifier, descriptor::MethodDescriptor};
 use std::{ffi::CStr, os::raw::c_int, path::PathBuf, sync::OnceLock};
 use tracing::debug;
 use tracing_subscriber::{
@@ -8,10 +9,6 @@ use tracing_subscriber::{
     layer::SubscriberExt,
     util::SubscriberInitExt,
 };
-
-use crate::descriptor::MethodDescriptor;
-
-mod descriptor;
 
 #[allow(warnings)]
 mod bindings {
@@ -170,7 +167,7 @@ extern "C" fn method_entry(
         );
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
         let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
-        let descriptor = MethodDescriptor::new(&signature).to_string();
+        let descriptor = MethodDescriptor::new(&signature);
 
         let mut class: bindings::jclass = std::ptr::null_mut();
 
@@ -182,6 +179,8 @@ extern "C" fn method_entry(
             return;
         }
 
+        let class_identifier = ClassIdentifier::parse(&class_name);
+
         let timestamp = Utc::now().timestamp_micros();
         SENDER
             .get()
@@ -190,7 +189,7 @@ extern "C" fn method_entry(
                 shared::MethodEvent::Entry {
                     timestamp,
                     name,
-                    class_name,
+                    class_identifier,
                     descriptor,
                 },
             ))
@@ -221,7 +220,7 @@ extern "C" fn method_exit(
 
         let name = CStr::from_ptr(name).to_string_lossy().to_string();
         let signature = CStr::from_ptr(signature).to_string_lossy().to_string();
-        let descriptor = MethodDescriptor::new(&signature).to_string();
+        let descriptor = MethodDescriptor::new(&signature);
 
         let mut class: bindings::jclass = std::ptr::null_mut();
 
@@ -233,6 +232,8 @@ extern "C" fn method_exit(
             return;
         }
 
+        let class_identifier = ClassIdentifier::parse(&class_name);
+
         let timestamp = Utc::now().timestamp_micros();
         SENDER
             .get()
@@ -241,7 +242,7 @@ extern "C" fn method_exit(
                 shared::MethodEvent::Exit {
                     timestamp,
                     name,
-                    class_name,
+                    class_identifier,
                     descriptor,
                 },
             ))
