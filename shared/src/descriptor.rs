@@ -2,6 +2,8 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
+use crate::class::ClassIdentifier;
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct MethodDescriptor {
     pub return_descriptor: ReturnDescriptor,
@@ -70,7 +72,7 @@ pub enum ReturnDescriptor {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum FieldType {
     Base(BaseType),
-    Object { class_name: String },
+    Object { class_identifier: ClassIdentifier },
     Component(Box<FieldType>),
 }
 
@@ -78,7 +80,7 @@ impl Display for FieldType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FieldType::Base(base_type) => write!(f, "{}", base_type),
-            FieldType::Object { class_name } => write!(f, "{}", class_name),
+            FieldType::Object { class_identifier } => write!(f, "{}", class_identifier),
             FieldType::Component(field_type) => write!(f, "{}", field_type),
         }
     }
@@ -123,7 +125,7 @@ impl FieldType {
             "S" => Self::Base(BaseType::Short),
             "Z" => Self::Base(BaseType::Boolean),
             "L" => Self::Object {
-                class_name: raw[1..raw.find(';').unwrap()].to_string(),
+                class_identifier: ClassIdentifier::parse(&raw[1..raw.find(';').unwrap()]),
             },
             "[" => Self::Component(Box::new(Self::new(&raw[1..]))),
             _ => panic!("unknown field type: {raw}"),
@@ -133,7 +135,7 @@ impl FieldType {
     fn length(&self) -> usize {
         match self {
             FieldType::Base(_) => 1,
-            FieldType::Object { class_name } => class_name.len() + 2,
+            FieldType::Object { class_identifier } => class_identifier.to_string().len() + 2,
             FieldType::Component(field_type) => field_type.length() + 1,
         }
     }
