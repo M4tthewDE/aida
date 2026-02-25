@@ -9,7 +9,7 @@ pub mod descriptor;
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ClassLoadEvent {
     pub timestamp: i64,
-    pub name: String,
+    pub class_identifier: ClassIdentifier,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

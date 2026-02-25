@@ -136,12 +136,14 @@ extern "C" fn class_load(
             return;
         }
 
+        let class_identifier = ClassIdentifier::parse(&name);
+
         SENDER
             .get()
             .unwrap()
             .send(shared::AgentMessage::ClassLoad(shared::ClassLoadEvent {
                 timestamp,
-                name,
+                class_identifier,
             }))
             .unwrap();
     }

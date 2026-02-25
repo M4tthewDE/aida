@@ -192,8 +192,10 @@ impl eframe::App for App {
                                     ui.horizontal(|ui| {
                                         ui.label(timestamp.to_rfc3339());
                                         ui.label(
-                                            RichText::new(&class_load_event.name)
-                                                .color(Color32::WHITE),
+                                            RichText::new(
+                                                class_load_event.class_identifier.to_string(),
+                                            )
+                                            .color(Color32::WHITE),
                                         );
                                     });
                                 }
