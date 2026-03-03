@@ -217,6 +217,7 @@ impl eframe::App for App {
                                             .unwrap();
                                     ui.horizontal(|ui| {
                                         ui.label(timestamp.to_rfc3339());
+
                                         match method_event {
                                             shared::MethodEvent::Entry { .. } => {
                                                 ui.label(RichText::new("->").color(Color32::GREEN))
@@ -225,19 +226,28 @@ impl eframe::App for App {
                                                 ui.label(RichText::new("<-").color(Color32::RED))
                                             }
                                         };
+
                                         ui.label(
                                             RichText::new(method_event.class().name())
-                                                .color(Color32::WHITE),
+                                                .color(Color32::GRAY),
                                         )
                                         .on_hover_text(method_event.class().to_string());
+
+                                        let name = if method_event.name() == "<init>" {
+                                            method_event.class().name()
+                                        } else {
+                                            method_event.name()
+                                        };
+
+                                        ui.label(RichText::new(name).color(Color32::WHITE));
+
                                         ui.label(
-                                            RichText::new(method_event.name())
-                                                .color(Color32::WHITE),
-                                        );
-                                        ui.label(
-                                            RichText::new(method_event.descriptor().to_string())
-                                                .color(Color32::WHITE),
-                                        );
+                                            RichText::new(
+                                                method_event.descriptor().to_short_string(),
+                                            )
+                                            .color(Color32::WHITE),
+                                        )
+                                        .on_hover_text(method_event.descriptor().to_string());
                                     });
                                 }
                             });

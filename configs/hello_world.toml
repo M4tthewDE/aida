@@ -4,8 +4,8 @@ class_loads = [ 'java.lang.String', 'java.util.IdentityHashMap' ]
 
 [[methods]]
 name = '<init>'
-class = 'java.lang.String'
+class = 'java.lang.Thread'
 
 [[methods]]
-name = '<init>'
-class = 'java.lang.Thread'
+name = 'concat'
+class = 'java.lang.String'

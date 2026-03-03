@@ -61,6 +61,15 @@ impl MethodDescriptor {
             parameters,
         }
     }
+
+    pub fn to_short_string(&self) -> String {
+        let parameters: Vec<String> = self
+            .parameters
+            .iter()
+            .map(|p| p.to_short_string())
+            .collect();
+        format!("({})", parameters.join(", "))
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -82,6 +91,16 @@ impl Display for FieldType {
             FieldType::Base(base_type) => write!(f, "{}", base_type),
             FieldType::Object { class_identifier } => write!(f, "{}", class_identifier),
             FieldType::Component(field_type) => write!(f, "{}", field_type),
+        }
+    }
+}
+
+impl FieldType {
+    fn to_short_string(&self) -> String {
+        match self {
+            FieldType::Base(base_type) => base_type.to_string(),
+            FieldType::Object { class_identifier } => class_identifier.name().to_string(),
+            FieldType::Component(field_type) => field_type.to_string(),
         }
     }
 }
