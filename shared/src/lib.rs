@@ -13,53 +13,18 @@ pub struct ClassLoadEvent {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub enum MethodEvent {
-    Entry {
-        timestamp: i64,
-        name: String,
-        class_identifier: ClassIdentifier,
-        descriptor: MethodDescriptor,
-    },
-    Exit {
-        timestamp: i64,
-        name: String,
-        class_identifier: ClassIdentifier,
-        descriptor: MethodDescriptor,
-    },
+pub enum MethodEventType {
+    Entry,
+    Exit,
 }
 
-impl MethodEvent {
-    pub fn timestamp(&self) -> i64 {
-        match self {
-            MethodEvent::Entry { timestamp, .. } => *timestamp,
-            MethodEvent::Exit { timestamp, .. } => *timestamp,
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        match self {
-            MethodEvent::Entry { name, .. } => name,
-            MethodEvent::Exit { name, .. } => name,
-        }
-    }
-
-    pub fn class(&self) -> &ClassIdentifier {
-        match self {
-            MethodEvent::Entry {
-                class_identifier, ..
-            } => class_identifier,
-            MethodEvent::Exit {
-                class_identifier, ..
-            } => class_identifier,
-        }
-    }
-
-    pub fn descriptor(&self) -> &MethodDescriptor {
-        match self {
-            MethodEvent::Entry { descriptor, .. } => descriptor,
-            MethodEvent::Exit { descriptor, .. } => descriptor,
-        }
-    }
+#[derive(Deserialize, Serialize, Debug)]
+pub struct MethodEvent {
+    pub timestamp: i64,
+    pub name: String,
+    pub class_identifier: ClassIdentifier,
+    pub descriptor: MethodDescriptor,
+    pub method_event_type: MethodEventType,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

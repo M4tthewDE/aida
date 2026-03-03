@@ -187,14 +187,13 @@ extern "C" fn method_entry(
         SENDER
             .get()
             .unwrap()
-            .send(shared::AgentMessage::MethodEvent(
-                shared::MethodEvent::Entry {
-                    timestamp,
-                    name,
-                    class_identifier,
-                    descriptor,
-                },
-            ))
+            .send(shared::AgentMessage::MethodEvent(shared::MethodEvent {
+                timestamp,
+                name,
+                class_identifier,
+                descriptor,
+                method_event_type: shared::MethodEventType::Entry,
+            }))
             .unwrap();
     }
 }
@@ -240,14 +239,13 @@ extern "C" fn method_exit(
         SENDER
             .get()
             .unwrap()
-            .send(shared::AgentMessage::MethodEvent(
-                shared::MethodEvent::Exit {
-                    timestamp,
-                    name,
-                    class_identifier,
-                    descriptor,
-                },
-            ))
+            .send(shared::AgentMessage::MethodEvent(shared::MethodEvent {
+                timestamp,
+                name,
+                class_identifier,
+                descriptor,
+                method_event_type: shared::MethodEventType::Exit,
+            }))
             .unwrap();
     }
 }

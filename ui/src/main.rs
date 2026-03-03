@@ -213,41 +213,41 @@ impl eframe::App for App {
                             .show(ui, |ui| {
                                 for method_event in &self.method_events {
                                     let timestamp: DateTime<Utc> =
-                                        DateTime::from_timestamp_micros(method_event.timestamp())
+                                        DateTime::from_timestamp_micros(method_event.timestamp)
                                             .unwrap();
                                     ui.horizontal(|ui| {
                                         ui.label(timestamp.to_rfc3339());
 
-                                        match method_event {
-                                            shared::MethodEvent::Entry { .. } => {
+                                        match method_event.method_event_type {
+                                            shared::MethodEventType::Entry => {
                                                 ui.label(RichText::new("->").color(Color32::GREEN))
                                             }
-                                            shared::MethodEvent::Exit { .. } => {
+                                            shared::MethodEventType::Exit => {
                                                 ui.label(RichText::new("<-").color(Color32::RED))
                                             }
                                         };
 
                                         ui.label(
-                                            RichText::new(method_event.class().name())
+                                            RichText::new(method_event.class_identifier.name())
                                                 .color(Color32::GRAY),
                                         )
-                                        .on_hover_text(method_event.class().to_string());
+                                        .on_hover_text(method_event.class_identifier.to_string());
 
-                                        let name = if method_event.name() == "<init>" {
-                                            method_event.class().name()
+                                        let name = if method_event.name == "<init>" {
+                                            method_event.class_identifier.name()
                                         } else {
-                                            method_event.name()
+                                            &method_event.name
                                         };
 
                                         ui.label(RichText::new(name).color(Color32::WHITE));
 
                                         ui.label(
                                             RichText::new(
-                                                method_event.descriptor().to_short_string(),
+                                                method_event.descriptor.to_short_string(),
                                             )
                                             .color(Color32::WHITE),
                                         )
-                                        .on_hover_text(method_event.descriptor().to_string());
+                                        .on_hover_text(method_event.descriptor.to_string());
                                     });
                                 }
                             });
